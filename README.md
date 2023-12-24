@@ -1,5 +1,6 @@
-# jswqx1020
-网页版wqx模拟器<br>
+# js版文曲星nc1020模拟器
+## [网页版文曲星nc1020模拟器](https://leoncoolmoon.github.io/jswqx1020/) <br>
+
 从 https://dnbwg.cdn.bcebos.com/jswqx/index.html 基础上修改增加了图形界面<br>
 ![screenshot](./nc1020.png)<br>
 orginal: http://bbs.emsky.net/viewthread.php?tid=33474<br>
