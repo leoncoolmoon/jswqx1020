@@ -57,7 +57,18 @@ var WqxKeyInput = function (){
         187: 'Equals',
         37: 'Left',
         40: 'Down',
-        39: 'Right'
+        39: 'Right',
+        49: 'B',//1
+		50: 'N',//2
+		51: 'M',//3
+		52: 'G',//4
+		53: 'H',//5
+		54: 'J',//6
+		55: 'T',//7
+		56: 'Y',//8
+		57: 'U',//9
+		32: 'Equals',//space
+		8: 'Left'//bkspc
     };
     var keyNameToKeypadMatrixIndex = {
         'F12': 0x02,
