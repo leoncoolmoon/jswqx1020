@@ -86,7 +86,7 @@
         由于ROM文件有24M之大，若加载过慢，请自行下载到硬盘上，拖拽到模拟器的屏幕区域手动加载。<br/>
         若想要离线使用能正常加载，请在chrome启动参数中加入`--allow-file-access-from-files`。<br/>
         2018.09.11 Dr.Quest优化版，压缩ROM到10M ZIP文件，添加了手机触摸屏支持<br/>
-	2023.12.24 leoncoolmoon 修改了图形UI<br/>
+	2023.12.24 leoncoolmoon 修改了图形UI <a href="https://github.com/leoncoolmoon/jswqx1020">github</a> <br/>
         <a href="rom.zip">ROM文件下载地址</a></span>
 </p>
 <script>
@@ -256,42 +256,13 @@
     var wqx = new Wqx(lcdDiv);
     var keyInput = new WqxKeyInput(wqx, document.getElementById('input'));
     keyInput.onpress = function (key){
-        var keyUnit = document.querySelector('div.keypad_unit[data-key="' + key + '"]');
-        if (keyUnit) {
-            keyUnit.classList.add('pressed');
-        }
+         keyAction (key,true);
     };
     keyInput.onrelease = function (key){
-        var keyUnit = document.querySelector('div.keypad_unit[data-key="' + key + '"]');
-        if (keyUnit) {
-            keyUnit.classList.remove('pressed');
-        }
+        keyAction (key,false);
     };
 
-    function userMouseDown(evt) {
-        event.preventDefault();
-        var div = evt.target;
-        do {
-            if (div.classList.contains('keypad_unit')) {
-        
-                keyInput.keyDown(div.getAttribute('data-key'));
-                break;
-            }
-            div = div.parentNode;
-        } while (div && div.nodeType == 1);
-    }
-    function userMouseUp(evt) {
-        event.preventDefault();
-        var div = evt.target;
-        do {
-            if (div.classList.contains('keypad_unit')) {
-                keyInput.keyUp(div.getAttribute('data-key'));
-                break;
-            }
-            div = div.parentNode;
-        } while (div && div.nodeType == 1);
-    }
-
+   
 
     var romLoaded = false;
     var norLoaded = false;
