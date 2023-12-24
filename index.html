@@ -18,45 +18,12 @@
             width: 320px;
             height: 160px;
             background-color: #98fb98;
-            padding: 0 25px;
+            padding-right: 50px;
+	    position: absolute;
+	    left: 26px;
+    	    top: 122px;
         }
-        #keypad {
-            border: 1px solid gray;
-            border-radius: 5px;
-            padding: 5px 3px 5px 5px;
-            width: 360px;
-            height: 152px;
-        }
-        #keypad>div {
-            height: 24px;
-            margin-bottom: 2px;
-        }
-        .keypad_unit {
-            width: 32px;
-            height: 20px;
-            border-radius: 3px;
-            display: inline-block;
-            background-color: rgb(213, 233, 205);
-            border: 1px solid rgb(128, 208, 70);
-            margin-right: 2px;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -o-user-select: none;
-            cursor: pointer;
-        }
-        .keypad_unit.pressed {
-            background-color: rgb(192, 192, 192);
-            border-color: black;
-        }
-        .keypad_unit_label {
-            font-size: 12px;
-            line-height: 20px;
-            color: rgb(128, 208, 70);
-            text-align: center;
-            position: absolute;
-            width: 32px;
-            height: 20px;
-        }
+      
     </style>
 </head>
 <body>
@@ -66,20 +33,9 @@
 <button id="reset" onclick="reset();">reset</button>
 <button id="load_demo">loadDemo</button>
 <div id="wqx">
-    <div id="lcd" style="
-    position: absolute;
-    left: 26px;
-    top: 122px;
-"></div>
-    <div style="
-    display: none;
-">
-        <button id="toogle_keypad">软键盘 开/关</button>
-        <label><input tabindex="0" id="input" type="text" placeholder="键盘输入" style="ime-mode: disabled;"/></label>
-    </div>
-   
+    <div id="lcd"></div>     
 </div>
- <canvas id="key" width="434" height="543" style = "height = 543; width = 434;"></canvas>
+ <canvas id="key" tabindex="0" width="434" height="543" style = "height = 543; width = 434;"></canvas>
 <p>
     <span>orginal: <a href="http://bbs.emsky.net/viewthread.php?tid=33474">http://bbs.emsky.net/viewthread.php?tid=33474</a><br/>
         目前只在chrome浏览器测试过，别的浏览器应该也有能跑的。<br/>
@@ -259,7 +215,7 @@ var keyState = false;
     var touching = false;
     var lcdDiv = document.getElementById('lcd')
     var wqx = new Wqx(lcdDiv);
-    var keyInput = new WqxKeyInput(wqx, document.getElementById('input'));
+    var keyInput = new WqxKeyInput(wqx, document.getElementById('key'));
   
     keyInput.onpress = function (key){
 	//keyAction(key,true);
