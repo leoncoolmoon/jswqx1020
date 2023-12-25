@@ -1,0 +1,12 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "type": "chrome",
+        "request": "launch",
+        "name": "addRuntimeArgs",
+        "runtimeArgs": ["--allow-file-access-from-files"],
+        "file": "${workspaceFolder}/index.html"
+      }
+    ]
+  }
