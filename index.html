@@ -49,16 +49,18 @@
     <button id="stop" onclick="stop();" disabled>stop</button>
     <button id="reset" onclick="reset();">reset</button>
     <button id="load_demo">loadDemo</button>
-    <div id="wqx" tabindex="0">
-        <div id="outScr">
-            <div id="scr">
-                <div id="lcd"></div>
+    <div id="device">
+        <div id="wqx" tabindex="0">
+            <div id="outScr">
+                <div id="scr">
+                    <div id="lcd"></div>
 
+                </div>
+                <canvas id="mark"></canvas>
             </div>
-            <canvas id="mark"></canvas>
         </div>
+        <canvas id="key" width="434" height="543"></canvas>
     </div>
-    <canvas id="key" width="434" height="543"></canvas>
     <p style="width: 434px;" id="info">
         <span style="word-wrap: break-word;">orginal: <a href="http://bbs.emsky.net/viewthread.php?tid=33474">
                 http://bbs.emsky.net/viewthread.php?tid=33474</a><br />
@@ -99,44 +101,44 @@
 
         // Array of keys
         var keys = [
-            { name: 'F1', x: 403, y: 20, width: 28, height: 15 },
-            { name: 'F2', x: 403, y: 55, width: 28, height: 15 },
-            { name: 'F3', x: 403, y: 90, width: 28, height: 15 },
-            { name: 'F4', x: 403, y: 125, width: 28, height: 15 },
+            { name: 'F1', x: 403, y: 10, width: 28, height: 30 },
+            { name: 'F2', x: 403, y: 45, width: 28, height: 30 },
+            { name: 'F3', x: 403, y: 80, width: 28, height: 30 },
+            { name: 'F4', x: 403, y: 115, width: 28, height: 30 },
             { name: 'F12', x: 400, y: 190, width: 32, height: 32 },
 
             // { name: 'F1', x: 2 ,y: 380 , width: 43, height: 32},  
             // { name: 'F1', x: 45 ,y: 380 , width: 43, height: 32},  
             { name: 'Reset', x: 105, y: 390, width: 10, height: 10 },
-            { name: 'F8', x: 131, y: 380, width: 43, height: 32 },
-            { name: 'F9', x: 174, y: 380, width: 43, height: 32 },
-            { name: 'F10', x: 217, y: 380, width: 43, height: 32 },
-            { name: 'F7', x: 260, y: 380, width: 43, height: 32 },
-            { name: 'F6', x: 303, y: 380, width: 43, height: 32 },
-            { name: 'F5', x: 346, y: 380, width: 43, height: 32 },
-            { name: 'F11', x: 389, y: 380, width: 43, height: 32 },
+            { name: 'F8', x: 131, y: 370, width: 43, height: 35},
+            { name: 'F9', x: 174, y: 370, width: 43, height: 35},
+            { name: 'F10', x: 217, y: 370, width: 43, height: 35},
+            { name: 'F7', x: 260, y: 370, width: 43, height: 35},
+            { name: 'F6', x: 303, y: 370, width: 43, height: 35},
+            { name: 'F5', x: 346, y: 370, width: 43, height: 35},
+            { name: 'F11', x: 389, y: 370, width: 43, height: 35},
 
-            { name: 'Q', x: 2, y: 412, width: 43, height: 32 },
-            { name: 'W', x: 45, y: 412, width: 43, height: 32 },
-            { name: 'E', x: 88, y: 412, width: 43, height: 32 },
-            { name: 'R', x: 131, y: 412, width: 43, height: 32 },
-            { name: 'T', x: 174, y: 412, width: 43, height: 32 },
-            { name: 'Y', x: 217, y: 412, width: 43, height: 32 },
-            { name: 'U', x: 260, y: 412, width: 43, height: 32 },
-            { name: 'I', x: 303, y: 412, width: 43, height: 32 },
-            { name: 'O', x: 346, y: 412, width: 43, height: 32 },
-            { name: 'P', x: 389, y: 412, width: 43, height: 32 },
+            { name: 'Q', x: 2, y: 407, width: 43, height: 32 },
+            { name: 'W', x: 45, y: 407, width: 43, height: 32 },
+            { name: 'E', x: 88, y: 407, width: 43, height: 32 },
+            { name: 'R', x: 131, y: 407, width: 43, height: 32 },
+            { name: 'T', x: 174, y: 407, width: 43, height: 32 },
+            { name: 'Y', x: 217, y: 407, width: 43, height: 32 },
+            { name: 'U', x: 260, y: 407, width: 43, height: 32 },
+            { name: 'I', x: 303, y: 407, width: 43, height: 32 },
+            { name: 'O', x: 346, y: 407, width: 43, height: 32 },
+            { name: 'P', x: 389, y: 407, width: 43, height: 32 },
 
-            { name: 'A', x: 2, y: 444, width: 43, height: 32 },
-            { name: 'S', x: 45, y: 444, width: 43, height: 32 },
-            { name: 'D', x: 88, y: 444, width: 43, height: 32 },
-            { name: 'F', x: 131, y: 444, width: 43, height: 32 },
-            { name: 'G', x: 174, y: 444, width: 43, height: 32 },
-            { name: 'H', x: 217, y: 444, width: 43, height: 32 },
-            { name: 'J', x: 260, y: 444, width: 43, height: 32 },
-            { name: 'K', x: 303, y: 444, width: 43, height: 32 },
-            { name: 'L', x: 346, y: 444, width: 43, height: 32 },
-            { name: 'Enter', x: 389, y: 444, width: 43, height: 32 },
+            { name: 'A', x: 2, y: 441, width: 43, height: 32 },
+            { name: 'S', x: 45, y: 441, width: 43, height: 32 },
+            { name: 'D', x: 88, y: 441, width: 43, height: 32 },
+            { name: 'F', x: 131, y: 441, width: 43, height: 32 },
+            { name: 'G', x: 174, y: 441, width: 43, height: 32 },
+            { name: 'H', x: 217, y: 441, width: 43, height: 32 },
+            { name: 'J', x: 260, y: 441, width: 43, height: 32 },
+            { name: 'K', x: 303, y: 441, width: 43, height: 32 },
+            { name: 'L', x: 346, y: 441, width: 43, height: 32 },
+            { name: 'Enter', x: 389, y: 441, width: 43, height: 32 },
 
             { name: 'Z', x: 2, y: 476, width: 43, height: 32 },
             { name: 'X', x: 45, y: 476, width: 43, height: 32 },
@@ -149,16 +151,16 @@
             { name: 'Up', x: 346, y: 476, width: 43, height: 32 },
             { name: 'PgDn', x: 389, y: 476, width: 43, height: 32 },
 
-            { name: 'Tab', x: 2, y: 508, width: 43, height: 32 },
-            { name: 'Shift', x: 45, y: 508, width: 43, height: 32 },
-            { name: 'CapsLock', x: 88, y: 508, width: 43, height: 32 },
-            { name: 'Esc', x: 131, y: 508, width: 43, height: 32 },
-            { name: '0', x: 174, y: 508, width: 43, height: 32 },
-            { name: 'Period', x: 217, y: 508, width: 43, height: 32 },
-            { name: 'Equals', x: 260, y: 508, width: 43, height: 32 },
-            { name: 'Left', x: 303, y: 508, width: 43, height: 32 },
-            { name: 'Down', x: 346, y: 508, width: 43, height: 32 },
-            { name: 'Right', x: 389, y: 508, width: 43, height: 32 },
+            { name: 'Tab', x: 2, y: 510, width: 43, height: 32 },
+            { name: 'Shift', x: 45, y: 510, width: 43, height: 32 },
+            { name: 'CapsLock', x: 88, y: 510, width: 43, height: 32 },
+            { name: 'Esc', x: 131, y: 510, width: 43, height: 32 },
+            { name: '0', x: 174, y: 510, width: 43, height: 32 },
+            { name: 'Period', x: 217, y: 510, width: 43, height: 32 },
+            { name: 'Equals', x: 260, y: 510, width: 43, height: 32 },
+            { name: 'Left', x: 303, y: 510, width: 43, height: 32 },
+            { name: 'Down', x: 346, y: 510, width: 43, height: 32 },
+            { name: 'Right', x: 389, y: 510, width: 43, height: 32 },
         ];
         // Get the canvas element
         var canvas = document.getElementById('key');
@@ -171,6 +173,14 @@
         image.onload = function () {
             // Draw the image to the canvas
             ctx.drawImage(image, 0, 0);
+            //draw all keys
+            //0.3 transparent
+            ctx.globalAlpha = 0.1;
+            ctx.strokeStyle = 'black    ';
+            for (var i = 0; i < keys.length; i++) {
+                ctx.strokeRect(keys[i].x, keys[i].y, keys[i].width, keys[i].height);
+            }
+            
         };
         image.src = 'nc1020.png';
 
@@ -242,7 +252,7 @@
             return null;
         }
 
-
+        var outScr = document.getElementById('outScr');
         // Call the keyAction function when a key is clicked or touched
         function keyAction(name, event) {
             if (name != null) {
@@ -258,16 +268,34 @@
                 }
             } else {
                 if (event) {
+
+                    //toggle device div full screen
+                    var device = document.getElementById('device');
+                    if (device.requestFullscreen) {
+                        device.requestFullscreen();
+                    } else if (device.msRequestFullscreen) {
+                        device.msRequestFullscreen();
+                    } else if (device.mozRequestFullScreen) {
+                        device.mozRequestFullScreen();
+                    } else if (device.webkitRequestFullscreen) {
+                        device.webkitRequestFullscreen();
+                    }
+                    //move outScr to right place on device
+                    outScr.style.left = "18px";
+                    outScr.style.top = "14px";
+
+                }else{
                     var infoP = document.getElementById('info');
                     infoP.style.display = infoP.style.display === "none" ? "block" : "none";
                 }
             }
         }
 
+
         var touching = false;
         var lcdDiv = document.getElementById('lcd')
         var elem = document.getElementById('wqx');
-        var outScr = document.getElementById('outScr');
+
         elem.focus();
         //right click lcdDiv to toggle full screen
         elem.addEventListener('contextmenu', function (evt) {
