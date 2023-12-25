@@ -19,11 +19,21 @@
         #lcd {
             width: 320px;
             height: 160px;
-            background-color: #98fb98;
-            padding-right: 50px;
+
+
+        }
+
+        #outScr {
             position: absolute;
             left: 26px;
             top: 122px;
+
+
+        }
+
+        #scr {
+            background-color: #98fb98;
+            width: 370px;
         }
 
         #key {
@@ -39,10 +49,16 @@
     <button id="stop" onclick="stop();" disabled>stop</button>
     <button id="reset" onclick="reset();">reset</button>
     <button id="load_demo">loadDemo</button>
-    <div id="wqx">
-        <div id="lcd"></div>
+    <div id="wqx" tabindex="0">
+        <div id="outScr">
+            <div id="scr">
+                <div id="lcd"></div>
+
+            </div>
+            <canvas id="mark"></canvas>
+        </div>
     </div>
-    <canvas id="key" tabindex="0" width="434" height="543"></canvas>
+    <canvas id="key" width="434" height="543"></canvas>
     <p style="width: 434px;" id="info">
         <span style="word-wrap: break-word;">orginal: <a href="http://bbs.emsky.net/viewthread.php?tid=33474">
                 http://bbs.emsky.net/viewthread.php?tid=33474</a><br />
@@ -50,11 +66,37 @@
             由于ROM文件有24M之大，若加载过慢，请自行下载到硬盘上，拖拽到模拟器的屏幕区域手动加载。<br />
             若想要离线使用能正常加载，请在chrome启动参数中加入`--allow-file-access-from-files`。<br />
             2018.09.11 Dr.Quest优化版，压缩ROM到10M ZIP文件，添加了手机触摸屏支持<br />
-            2023.12.24 leoncoolmoon 修改了图形UI -> <a href="https://github.com/leoncoolmoon/jswqx1020">github</a> <br />
+            2023.12.24 leoncoolmoon 修改了图形UI 增加ctrl为跳出键 -> <a href="https://github.com/leoncoolmoon/jswqx1020">github</a>
+            <br />
 
             <a href="rom.zip">ROM文件下载地址</a></span>
     </p>
     <script>
+
+        var span = document.getElementById('mark');
+        span.width = 320;
+        span.height = 16;
+        span.style = "width: 320px;height: 16px;margin-top: 8px;background: #c1c1c1;"
+
+        displayNumber("black");
+        //display number 1 to 0 with 36 px space in between on canvas
+        function displayNumber(color) {
+            var ctx = span.getContext('2d');
+            ctx.clearRect(0, 0, 370, 160);
+            ctx.font = "16px Arial";
+            ctx.fillStyle = color;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            var offset = 16;
+            for (var i = 1; i < 10; i++) {
+                ctx.fillText(i, 32 * i + offset, 8);
+            }
+        }
+
+
+
+
+
         // Array of keys
         var keys = [
             { name: 'F1', x: 403, y: 20, width: 28, height: 15 },
@@ -120,7 +162,7 @@
         ];
         // Get the canvas element
         var canvas = document.getElementById('key');
-        canvas.focus();
+
         // Get the context of the canvas
         var ctx = canvas.getContext('2d');
 
@@ -224,8 +266,50 @@
 
         var touching = false;
         var lcdDiv = document.getElementById('lcd')
+        var elem = document.getElementById('wqx');
+        var outScr = document.getElementById('outScr');
+        elem.focus();
+        //right click lcdDiv to toggle full screen
+        elem.addEventListener('contextmenu', function (evt) {
+            evt.preventDefault();
+            var elem = document.getElementById('wqx');
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen();
+            } else if (elem.msRequestFullscreen) {
+                elem.msRequestFullscreen();
+            } else if (elem.mozRequestFullScreen) {
+                elem.mozRequestFullScreen();
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen();
+            }
+            //center lcdDiv
+            //get fullscreen width w
+            var w = window.screen.width;
+            var h = window.screen.height;
+            var lcdW = 320;
+            var lcdH = 160;
+            var left = (w - lcdW) / 2;
+            var top = (h - lcdH) / 2;
+            outScr.style.left = left + "px";
+            outScr.style.top = top + "px";
+            span.style.background = "none";
+            displayNumber("white");
+            elem.focus();
+        }, false);
+        //lcdDiv return to normal size when exit full screen
+        document.addEventListener('fullscreenchange', function (evt) {
+            if (!document.fullscreenElement) {
+                outScr.style.left = "26px";
+                outScr.style.top = "122px";
+                span.style.background = "#c1c1c1";
+                displayNumber("black");
+                elem.focus();
+            }
+        }, false);
+
+
         var wqx = new Wqx(lcdDiv);
-        var keyInput = new WqxKeyInput(wqx, document.getElementById('key'));
+        var keyInput = new WqxKeyInput(wqx, elem);
 
         keyInput.onpress = function (key) {
             //keyAction(key,true);
