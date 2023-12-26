@@ -110,13 +110,13 @@
             // { name: 'F1', x: 2 ,y: 380 , width: 43, height: 32},  
             // { name: 'F1', x: 45 ,y: 380 , width: 43, height: 32},  
             { name: 'Reset', x: 105, y: 390, width: 10, height: 10 },
-            { name: 'F8', x: 131, y: 370, width: 43, height: 35},
-            { name: 'F9', x: 174, y: 370, width: 43, height: 35},
-            { name: 'F10', x: 217, y: 370, width: 43, height: 35},
-            { name: 'F7', x: 260, y: 370, width: 43, height: 35},
-            { name: 'F6', x: 303, y: 370, width: 43, height: 35},
-            { name: 'F5', x: 346, y: 370, width: 43, height: 35},
-            { name: 'F11', x: 389, y: 370, width: 43, height: 35},
+            { name: 'F8', x: 131, y: 370, width: 43, height: 35 },
+            { name: 'F9', x: 174, y: 370, width: 43, height: 35 },
+            { name: 'F10', x: 217, y: 370, width: 43, height: 35 },
+            { name: 'F7', x: 260, y: 370, width: 43, height: 35 },
+            { name: 'F6', x: 303, y: 370, width: 43, height: 35 },
+            { name: 'F5', x: 346, y: 370, width: 43, height: 35 },
+            { name: 'F11', x: 389, y: 370, width: 43, height: 35 },
 
             { name: 'Q', x: 2, y: 407, width: 43, height: 32 },
             { name: 'W', x: 45, y: 407, width: 43, height: 32 },
@@ -180,7 +180,7 @@
             for (var i = 0; i < keys.length; i++) {
                 ctx.strokeRect(keys[i].x, keys[i].y, keys[i].width, keys[i].height);
             }
-            
+
         };
         image.src = 'nc1020.png';
 
@@ -251,7 +251,7 @@
             // If no key was found, return null
             return null;
         }
-
+        var fullScreenState = 0;
         var outScr = document.getElementById('outScr');
         // Call the keyAction function when a key is clicked or touched
         function keyAction(name, event) {
@@ -280,11 +280,9 @@
                     } else if (device.webkitRequestFullscreen) {
                         device.webkitRequestFullscreen();
                     }
-                    //move outScr to right place on device
-                    outScr.style.left = "18px";
-                    outScr.style.top = "14px";
+                    fullScreenState = 1;
 
-                }else{
+                } else {
                     var infoP = document.getElementById('info');
                     infoP.style.display = infoP.style.display === "none" ? "block" : "none";
                 }
@@ -298,7 +296,7 @@
 
         elem.focus();
         //right click lcdDiv to toggle full screen
-        elem.addEventListener('contextmenu', function (evt) {
+        elem.addEventListener('contextmenu', function (evt) {       
             evt.preventDefault();
             var elem = document.getElementById('wqx');
             if (elem.requestFullscreen) {
@@ -310,29 +308,38 @@
             } else if (elem.webkitRequestFullscreen) {
                 elem.webkitRequestFullscreen();
             }
-            //center lcdDiv
-            //get fullscreen width w
-            var w = window.screen.width;
-            var h = window.screen.height;
-            var lcdW = 320;
-            var lcdH = 160;
-            var left = (w - lcdW) / 2;
-            var top = (h - lcdH) / 2;
-            outScr.style.left = left + "px";
-            outScr.style.top = top + "px";
-            span.style.background = "none";
-            displayNumber("white");
-            elem.focus();
+            fullScreenState = 2;
         }, false);
         //lcdDiv return to normal size when exit full screen
         document.addEventListener('fullscreenchange', function (evt) {
-            if (!document.fullscreenElement) {
+            isFullScreen = document.fullscreenElement ? true : false;
+            if (!isFullScreen) {
                 outScr.style.left = "26px";
                 outScr.style.top = "122px";
                 span.style.background = "#c1c1c1";
                 displayNumber("black");
-                elem.focus();
+            } else {
+                if (fullScreenState === 1) {
+                    outScr.style.left = "18px";
+                    outScr.style.top = "14px";
+
+                } else if (fullScreenState === 2) {
+                    //center lcdDiv
+                    //get fullscreen width w
+                    var w = window.screen.width;
+                    var h = window.screen.height;
+                    var lcdW = 320;
+                    var lcdH = 160;
+                    var left = (w - lcdW) / 2;
+                    var top = (h - lcdH) / 2;
+                    outScr.style.left = left + "px";
+                    outScr.style.top = top + "px";
+                    span.style.background = "none";
+                    displayNumber("white");
+                }
             }
+            elem.focus();
+
         }, false);
 
 
