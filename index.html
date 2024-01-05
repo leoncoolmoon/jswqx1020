@@ -2,7 +2,9 @@
 <html>
 
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
 
     <meta charset="utf-8" />
     <title>文曲星模拟器</title>
@@ -19,16 +21,12 @@
         #lcd {
             width: 320px;
             height: 160px;
-
-
         }
 
         #outScr {
             position: absolute;
             left: 26px;
             top: 122px;
-
-
         }
 
         #scr {
@@ -79,7 +77,6 @@
         span.width = 320;
         span.height = 16;
         span.style = "width: 320px;height: 16px;margin-top: 8px;background: #c1c1c1;"
-
         displayNumber("black");
         //display number 1 to 0 with 36 px space in between on canvas
         function displayNumber(color) {
@@ -94,10 +91,6 @@
                 ctx.fillText(i, 32 * i + offset, 8);
             }
         }
-
-
-
-
 
         // Array of keys
         var keys = [
@@ -162,9 +155,18 @@
             { name: 'Down', x: 346, y: 510, width: 43, height: 32 },
             { name: 'Right', x: 389, y: 510, width: 43, height: 32 },
         ];
+        function minum(a, b) {
+            return a > b ? b : a;
+        }
+
+        //0:screen, 1:window, 2:scale for lcd, 3: scale for device
+        var wxh = [[screen.width, screen.height], [window.innerWidth, window.innerHeight], [320, 160]];
         // Get the canvas element
         var canvas = document.getElementById('key');
-
+        function getWxH() {
+            wxh[0] = [screen.width, screen.height];
+            wxh[1] = [window.innerWidth, window.innerHeight];
+        }
         // Get the context of the canvas
         var ctx = canvas.getContext('2d');
 
@@ -173,10 +175,11 @@
         image.onload = function () {
             // Draw the image to the canvas
             ctx.drawImage(image, 0, 0);
+            wxh[3] = [image.width, image.height];
             //draw all keys
             //0.3 transparent
             ctx.globalAlpha = 0.1;
-            ctx.strokeStyle = 'black    ';
+            ctx.strokeStyle = 'black';
             for (var i = 0; i < keys.length; i++) {
                 ctx.strokeRect(keys[i].x, keys[i].y, keys[i].width, keys[i].height);
             }
@@ -251,7 +254,12 @@
             // If no key was found, return null
             return null;
         }
-        var fullScreenState = 0;
+        var fullScreenState = 0;// 0 normal 1 full screen 2 full screen lcd
+        // console.log("screenScale:" + document.body.style.zoom);
+        // document.body.style.zoom = wxh[fullScreenState];
+        // console.log("screenScale:" + document.body.style.zoom);
+        //get view point scale
+
         var outScr = document.getElementById('outScr');
         // Call the keyAction function when a key is clicked or touched
         function keyAction(name, event) {
@@ -270,7 +278,6 @@
                 if (event) {
 
                     //toggle device div full screen
-                    var device = document.getElementById('device');
                     if (device.requestFullscreen) {
                         device.requestFullscreen();
                     } else if (device.msRequestFullscreen) {
@@ -281,7 +288,6 @@
                         device.webkitRequestFullscreen();
                     }
                     fullScreenState = 1;
-
                 } else {
                     var infoP = document.getElementById('info');
                     infoP.style.display = infoP.style.display === "none" ? "block" : "none";
@@ -293,55 +299,198 @@
         var touching = false;
         var lcdDiv = document.getElementById('lcd')
         var elem = document.getElementById('wqx');
+        var device = document.getElementById('device');
 
         elem.focus();
         //right click lcdDiv to toggle full screen
-        elem.addEventListener('contextmenu', function (evt) {       
+        elem.addEventListener('contextmenu', function (evt) {
             evt.preventDefault();
-            var elem = document.getElementById('wqx');
-            if (elem.requestFullscreen) {
-                elem.requestFullscreen();
-            } else if (elem.msRequestFullscreen) {
-                elem.msRequestFullscreen();
-            } else if (elem.mozRequestFullScreen) {
-                elem.mozRequestFullScreen();
-            } else if (elem.webkitRequestFullscreen) {
-                elem.webkitRequestFullscreen();
+            var eleme = document.getElementById('wqx');
+            if (eleme.requestFullscreen) {
+                eleme.requestFullscreen();
+            } else if (eleme.msRequestFullscreen) {
+                eleme.msRequestFullscreen();
+            } else if (eleme.mozRequestFullScreen) {
+                eleme.mozRequestFullScreen();
+            } else if (eleme.webkitRequestFullscreen) {
+                eleme.webkitRequestFullscreen();
             }
             fullScreenState = 2;
         }, false);
+        var hasPhysicalKeyboard = false;
+        function screenArrangement(screenState) {
+            console.log("screenState:" + screenState);
+            //wxh 0:screen 1:window 2:scale for lcd 3: scale for device
+            //screenState: 0: vertical normal  1:horizontal normal 
+            //2: vertical full screen lcd 3: horizontal full screen lcd
+            //4: vertical full screen device 5: horizontal full screen device
+            // check if has physical keyboard
+
+            var keyboard = navigator.keyboard;
+            if (keyboard) {
+                hasPhysicalKeyboard = keyboard['request'] ? true : false;
+            }
+            //0:bodyScale 1:devicePosition 2:lcdPosition
+            var scale = [4, [0, 0], [26, 122]];
+            switch (screenState) {
+                case 0://vertical normal
+                    //based on the width of the window and the width of the device calculate the scale
+                    scale = [wxh[1][0] / wxh[3][0], [0, 0], [26, 122]];
+                    break;
+                case 1://horizontal normal
+                    //based on the height of the window and the height of the device calculate the scale
+                    scale = [wxh[1][1] / wxh[3][1], [0, 0], [26, 122]];
+                    break;
+                case 2://vertical full screen lcd
+                    //based on the width of the screen and the width of the lcd calculate the scale
+                    //keep the lcdDiv in the center of the screen
+                    if (hasPhysicalKeyboard) {
+                        var s = wxh[0][0] / wxh[2][0]; //scale of lcdDiv
+                        scale = [s, [0, 0], [0, (wxh[0][1] - wxh[2][1] * s) / 2]];
+                    } else {
+                        //same as case 4
+                        var s = wxh[0][0] / wxh[3][0]; //scale of device
+                        scale = [s, [0, (wxh[0][1] - wxh[3][1]) / 2], [26, 122]];
+                    }
+                    break;
+                case 3://horizontal full screen lcd
+                    //based on the height of the screen and the height of the lcd calculate the scale
+                    //keep the lcdDiv in the center of the screen
+                    if (hasPhysicalKeyboard) {
+                        var s = wxh[0][1] / wxh[2][1]; //scale of lcdDiv
+                        scale = [s, [0, 0], [(wxh[0][0] - wxh[2][0] * s) / 2, 0]];
+                        console.log("s:" + s);
+                    } else {
+                        //same as case 5
+                        var s = wxh[0][1] / wxh[3][1]; //scale of device
+                        scale = [s, [(wxh[0][0] - wxh[3][0] * s) / 2, 0], [26, 122]];
+                        console.log("s:" + s);
+                    }
+                    
+                    break;
+                case 4://vertical full screen device
+                    //based on the width of the screen and the width of the device calculate the scale
+                    //keep the device in the center of the screen
+                    var s = wxh[0][0] / wxh[3][0]; //scale of device
+                    console.log("s:" + s);
+                    scale = [s, [0, (wxh[0][1] - wxh[3][1]) / 2], [18, 14]];
+                    break;
+                case 5://horizontal full screen device  
+                    //based on the height of the screen and the height of the device calculate the scale
+                    //keep the device in the center of the screen
+                    var s = wxh[0][1] / wxh[3][1]; //scale of device
+                    console.log("s:" + s);
+                    scale = [s, [(wxh[0][0] - wxh[3][0] * s) / 2, 0], [18, 14]];
+                    break;
+                default://case 0
+                    scale = [wxh[1][0] / wxh[3][0], [0, 0], [26, 122]];
+                    break;
+            }
+            return scale;
+        }
+
+        //listen to screen orientation change
+        //listen to windows size change
         //lcdDiv return to normal size when exit full screen
         document.addEventListener('fullscreenchange', function (evt) {
+            getWxH();
+            var s;
             isFullScreen = document.fullscreenElement ? true : false;
-            if (!isFullScreen) {
-                outScr.style.left = "26px";
-                outScr.style.top = "122px";
+            if (!isFullScreen) {//exit full screen
+                fullScreenState = 0;
                 span.style.background = "#c1c1c1";
                 displayNumber("black");
+                if (wxh[0][0] > wxh[0][1]) {
+                    s = screenArrangement(1);
+                } else {
+                    s = screenArrangement(0);
+                }
+                device.style.left = s[1][0] + "px";
+                device.style.top = s[1][1] + "px";
+                outScr.style.left = s[2][0] + "px";
+                outScr.style.top = s[2][1] + "px";
             } else {
-                if (fullScreenState === 1) {
-                    outScr.style.left = "18px";
-                    outScr.style.top = "14px";
-
-                } else if (fullScreenState === 2) {
+                if (fullScreenState === 1) {//full screen device
+                   if (wxh[0][0] > wxh[0][1]) {
+                        s = screenArrangement(5);
+                    } else {
+                        s = screenArrangement(4);
+                    }
+                    device.style.left = s[1][0] + "px";
+                    device.style.top = s[1][1] + "px";
+                    outScr.style.left = s[2][0] + "px";
+                    outScr.style.top = s[2][1] + "px";
+                } else if (fullScreenState === 2) {//full screen lcd
                     //center lcdDiv
                     //get fullscreen width w
-                    var w = window.screen.width;
-                    var h = window.screen.height;
-                    var lcdW = 320;
-                    var lcdH = 160;
-                    var left = (w - lcdW) / 2;
-                    var top = (h - lcdH) / 2;
-                    outScr.style.left = left + "px";
-                    outScr.style.top = top + "px";
                     span.style.background = "none";
                     displayNumber("white");
+                    if (wxh[0][0] > wxh[0][1]) {
+                        s = screenArrangement(3);
+                    } else {
+                        s = screenArrangement(2);
+                    }
+                    if (hasPhysicalKeyboard) {
+                        outScr.style.left = s[1][0] + "px";
+                        outScr.style.top = s[1][1] + "px";
+                    } else {
+                        device.style.left = s[1][0] + "px";
+                        device.style.top = s[1][1] + "px";
+                        outScr.style.left = s[2][0] + "px";
+                        outScr.style.top = s[2][1] + "px";
+                    }
                 }
             }
+            document.body.style.zoom = s[0];
             elem.focus();
-
         }, false);
+        //listen to window resize
+        window.addEventListener('resize', function (evt) {
+            getWxH();
+            var s;
+            if (fullScreenState === 0) {//normal
+                if (wxh[0][0] > wxh[0][1]) {
+                    s = screenArrangement(1);
+                } else {
+                    s = screenArrangement(0);
+                }
+                device.style.left = s[1][0] + "px";
+                device.style.top = s[1][1] + "px";
+                outScr.style.left = s[2][0] + "px";
+                outScr.style.top = s[2][1] + "px";
+            } else if (fullScreenState === 1) {//full screen device
+                if (wxh[0][0] > wxh[0][1]) {
+                    s = screenArrangement(5);
+                } else {
+                    s = screenArrangement(4);
+                }
+                device.style.left = s[1][0] + "px";
+                device.style.top = s[1][1] + "px";
+                outScr.style.left = s[2][0] + "px";
+                outScr.style.top = s[2][1] + "px";
+            } else if (fullScreenState === 2) {//full screen lcd
+                //center lcdDiv
+                //get fullscreen width w
+                if (wxh[0][0] > wxh[0][1]) {
+                    s = screenArrangement(3);
+                } else {
+                    s = screenArrangement(2);
+                }
+                if (hasPhysicalKeyboard) {
+                    outScr.style.left = s[1][0] + "px";
+                    outScr.style.top = s[1][1] + "px";
+                } else {
+                    device.style.left = s[1][0] + "px";
+                    device.style.top = s[1][1] + "px";
+                    outScr.style.left = s[2][0] + "px";
+                    outScr.style.top = s[2][1] + "px";
+                }
 
+
+            }
+            elem.focus();
+            document.body.style.zoom = s[0];
+        }, false);
 
         var wqx = new Wqx(lcdDiv);
         var keyInput = new WqxKeyInput(wqx, elem);
