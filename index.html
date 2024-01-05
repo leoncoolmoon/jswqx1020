@@ -242,6 +242,10 @@
 
         // Get the key at the specified coordinates
         function getKeyAt(x, y) {
+            var scale = document.body.style.zoom ==""?1:document.body.style.zoom;
+           // console.log("x:" + x + ",y:" + y + ",scale:" + scale);
+            x=x/scale;
+            y=y/scale;
             // Loop through all of the keys
             for (var i = 0; i < keys.length; i++) {
                 // If the key is at the specified coordinates, return the key
@@ -274,25 +278,25 @@
                     }
                     keyInput.keyUp(name);
                 }
-            } else {
-                if (event) {
+            } //else {
+                // if (event) {
 
-                    //toggle device div full screen
-                    if (device.requestFullscreen) {
-                        device.requestFullscreen();
-                    } else if (device.msRequestFullscreen) {
-                        device.msRequestFullscreen();
-                    } else if (device.mozRequestFullScreen) {
-                        device.mozRequestFullScreen();
-                    } else if (device.webkitRequestFullscreen) {
-                        device.webkitRequestFullscreen();
-                    }
-                    fullScreenState = 1;
-                } else {
-                    var infoP = document.getElementById('info');
-                    infoP.style.display = infoP.style.display === "none" ? "block" : "none";
-                }
-            }
+                //     //toggle device div full screen
+                //     if (device.requestFullscreen) {
+                //         device.requestFullscreen();
+                //     } else if (device.msRequestFullscreen) {
+                //         device.msRequestFullscreen();
+                //     } else if (device.mozRequestFullScreen) {
+                //         device.mozRequestFullScreen();
+                //     } else if (device.webkitRequestFullscreen) {
+                //         device.webkitRequestFullscreen();
+                //     }
+                //     fullScreenState = 1;
+                // } else {
+                //     var infoP = document.getElementById('info');
+                //     infoP.style.display = infoP.style.display === "none" ? "block" : "none";
+                // }
+           // }
         }
 
 
@@ -305,7 +309,14 @@
         //right click lcdDiv to toggle full screen
         elem.addEventListener('contextmenu', function (evt) {
             evt.preventDefault();
-            var eleme = document.getElementById('wqx');
+            var eleme;
+            if(!hasPhysicalKeyboard){
+                eleme = device;
+                fullScreenState = 1;
+            }else{
+                eleme = elem;
+                fullScreenState = 2;
+            }
             if (eleme.requestFullscreen) {
                 eleme.requestFullscreen();
             } else if (eleme.msRequestFullscreen) {
@@ -315,7 +326,6 @@
             } else if (eleme.webkitRequestFullscreen) {
                 eleme.webkitRequestFullscreen();
             }
-            fullScreenState = 2;
         }, false);
         var hasPhysicalKeyboard = false;
         function screenArrangement(screenState) {
@@ -326,10 +336,10 @@
             //4: vertical full screen device 5: horizontal full screen device
             // check if has physical keyboard
 
-            var keyboard = navigator.keyboard;
-            if (keyboard) {
-                hasPhysicalKeyboard = keyboard['request'] ? true : false;
-            }
+            // var keyboard = navigator.keyboard;
+            // if (keyboard) {
+            //     hasPhysicalKeyboard = keyboard['request'] ? true : false;
+            // }
             //0:bodyScale 1:devicePosition 2:lcdPosition
             var scale = [4, [0, 0], [26, 122]];
             switch (screenState) {
