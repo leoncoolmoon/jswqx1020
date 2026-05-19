@@ -49,6 +49,7 @@ var WqxKeyInput = function (){
         38: 'Up',
         34: 'PageDown',
         9: 'Tab',
+        16: 'Shift',
         229: 'Shift',
         20: 'CapsLock',
         27: 'Esc',
@@ -68,11 +69,11 @@ var WqxKeyInput = function (){
 		56: 'Y',//8
 		57: 'U',//9
 		32: 'Equals',//space
-		8: 'Left',//bkspc
+		8: 'F2',//bkspc
         17: 'Esc'
     };
     var keyNameToKeypadMatrixIndex = {
-        'F12': 0x02,
+        'F12': 0x0F,
 
         'F5': 0x08,
         'F6': 0x09,
@@ -137,7 +138,8 @@ var WqxKeyInput = function (){
         if (wqxKeyCode) {
             var col = wqxKeyCode >> 3;
             var row = wqxKeyCode & 0x07;
-            this.wqx.keypadmatrix[row][col] = downOrUp ? 1 : 0;
+            //this.wqx.keypadmatrix[row][col] = downOrUp ? 1 : 0;
+			this.wqx.setKey(wqxKeyCode, downOrUp);
         }
     };
     WqxKeyInput.prototype.keyDown = function (key){
