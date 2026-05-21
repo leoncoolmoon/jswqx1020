@@ -1,6 +1,12 @@
 // cc800
 // http://bbs.emsky.net/viewthread.php?tid=33474
 
+// ── 调试追踪开关 ──────────────────────────────────────────────────
+// 设为 true 可在控制台看到完整启动链和关键函数调用序列
+var WQX_TRACE = false;
+function _trace(name) { if (WQX_TRACE) console.log('[WQX] ' + name); }
+// ──────────────────────────────────────────────────────────────────
+
 var Wqx = (function (){
     var io00_bank_switch = 0x00;
     var io01_int_enable = 0x01;
@@ -94,16 +100,8 @@ var Wqx = (function (){
         this.wakeUpPending = false;
         this.wakeUpKey = 0;
 
-        this.keypadmatrix = [
-            [0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0]
-        ];
+        // 对应C++ keypad_matrix: Uint8Array，每行一个字节，直接位运算
+        this.keypadmatrix = new Uint8Array(8);
         this.lcdoffshift0flag = 0;
         this.lcdbuffaddr = null;
         this.timer0started = false;
@@ -135,6 +133,7 @@ var Wqx = (function (){
     }
 
     Wqx.prototype.initLcd = function (){
+        _trace('initLcd');
         var doc = this.div.ownerDocument;
         var canvas = doc.createElement('canvas');
         canvas.width = 320;
@@ -148,6 +147,7 @@ var Wqx = (function (){
     };
 
     Wqx.prototype.initRom = function (){
+        _trace('initRom');
         this.rom = new Uint8Array(0x8000 * 768);
         for (var i=0; i<256; i++) {
             this.volume0array[i] = getByteArray(this.rom, 0x8000 * i, 0x8000);
@@ -157,6 +157,7 @@ var Wqx = (function (){
     };
 
     Wqx.prototype.initNor = function (){
+        _trace('initNor');
         this.nor = new Uint8Array(0x8000 * 32);
         this.norbankheader = [];
         for (var i=0; i<32; i++) {
@@ -165,12 +166,14 @@ var Wqx = (function (){
     };
 
     Wqx.prototype.initRam = function (){
+        _trace('initRam');
         this.ram = new Uint8Array(0x10000);
         this.ptr40 = getByteArray(this.ram, 0x40, 0x40);
         this.zp40cache = new Uint8Array(0x40);
     };
 
     Wqx.prototype.initMemmap = function (){
+        _trace('initMemmap');
         this.memmap[map0000] = getByteArray(this.ram, 0, 0x2000);
         this.ram2000_4000 = getByteArray(this.ram, 0x2000, 0x2000);
         this.memmap[map2000] = this.ram2000_4000;
@@ -215,6 +218,7 @@ var Wqx = (function (){
     };
 
     Wqx.prototype.initIo = function (){
+        _trace('initIo');
         this.io_read_map = new Array(0x10000);
         this.io_write_map = new Array(0x10000);
         for (var i=0; i<0x10000; i++) {
@@ -367,6 +371,7 @@ var Wqx = (function (){
 
     // 修复：对应C++ Write05，bit3变化时控制睡眠状态
     Wqx.prototype.write05ClockCtrl = function (value){
+        _trace('write05ClockCtrl');
         var oldValue = this.ram[io05_clock_ctrl];
         // bit3 变化控制睡眠（LCD on = 唤醒，LCD off = 睡眠）
         if ((oldValue ^ value) & 0x08) {
@@ -382,18 +387,18 @@ var Wqx = (function (){
     };
 
     // 对应C++ SetKey：处理按键的睡眠/唤醒逻辑
-    // keyId: wqx内部键码（0x00~0x3F），downOrUp: true=按下 false=抬起
     Wqx.prototype.setKey = function (keyId, downOrUp){
         var row = keyId & 0x07;
         var col = keyId >> 3;
+        var bits = (keyId === 0x0F) ? 0xFE : (1 << col);
         var wakeUpKeyMap = {
             0x08: 0x00, 0x09: 0x0A, 0x0A: 0x08, 0x0B: 0x06,
             0x0C: 0x04, 0x0D: 0x02, 0x0E: 0x0C, 0x0F: 0x00
         };
 
         if (downOrUp) {
+            this.keypadmatrix[row] |= bits;
             if (this.slept) {
-                // 休眠中：0x08~0x0F（除0x0E）可唤醒
                 if (keyId >= 0x08 && keyId <= 0x0F && keyId !== 0x0E) {
                     this.wakeUpKey = wakeUpKeyMap[keyId];
                     this.shouldWakeUp = true;
@@ -401,14 +406,13 @@ var Wqx = (function (){
                     this.slept = false;
                 }
             } else {
-                // 工作中：0x0F进入休眠
                 if (keyId === 0x0F) {
                     this.slept = true;
                 }
             }
+        } else {
+            this.keypadmatrix[row] &= ~bits;
         }
-
-        this.keypadmatrix[row][col] = downOrUp ? 1 : 0;
     };
 
     Wqx.prototype.setLcdStartAddr = function (addr){
@@ -443,14 +447,14 @@ var Wqx = (function (){
 
     Wqx.prototype.write09Port1 = function (value){
         switch (value){
-        case 0x01: this.ram[io08_port0_data] = buildByte(this.keypadmatrix[0]); break;
-        case 0x02: this.ram[io08_port0_data] = buildByte(this.keypadmatrix[1]); break;
-        case 0x04: this.ram[io08_port0_data] = buildByte(this.keypadmatrix[2]); break;
-        case 0x08: this.ram[io08_port0_data] = buildByte(this.keypadmatrix[3]); break;
-        case 0x10: this.ram[io08_port0_data] = buildByte(this.keypadmatrix[4]); break;
-        case 0x20: this.ram[io08_port0_data] = buildByte(this.keypadmatrix[5]); break;
-        case 0x40: this.ram[io08_port0_data] = buildByte(this.keypadmatrix[6]); break;
-        case 0x80: this.ram[io08_port0_data] = buildByte(this.keypadmatrix[7]); break;
+        case 0x01: this.ram[io08_port0_data] = this.keypadmatrix[0]; break;
+        case 0x02: this.ram[io08_port0_data] = this.keypadmatrix[1]; break;
+        case 0x04: this.ram[io08_port0_data] = this.keypadmatrix[2]; break;
+        case 0x08: this.ram[io08_port0_data] = this.keypadmatrix[3]; break;
+        case 0x10: this.ram[io08_port0_data] = this.keypadmatrix[4]; break;
+        case 0x20: this.ram[io08_port0_data] = this.keypadmatrix[5]; break;
+        case 0x40: this.ram[io08_port0_data] = this.keypadmatrix[6]; break;
+        case 0x80: this.ram[io08_port0_data] = this.keypadmatrix[7]; break;
         case 0:
             this.ram[io0B_port3_data] |= 1;
             if (this.keypadmatrix[7] === 0xFE) {
@@ -460,14 +464,14 @@ var Wqx = (function (){
         case 0x7F:
             if (this.ram[io15_port1_dir] === 0x7F) {
                 this.ram[io08_port0_data] = (
-                    buildByte(this.keypadmatrix[0]) |
-                    buildByte(this.keypadmatrix[1]) |
-                    buildByte(this.keypadmatrix[2]) |
-                    buildByte(this.keypadmatrix[3]) |
-                    buildByte(this.keypadmatrix[4]) |
-                    buildByte(this.keypadmatrix[5]) |
-                    buildByte(this.keypadmatrix[6]) |
-                    buildByte(this.keypadmatrix[7])
+                    this.keypadmatrix[0] |
+                    this.keypadmatrix[1] |
+                    this.keypadmatrix[2] |
+                    this.keypadmatrix[3] |
+                    this.keypadmatrix[4] |
+                    this.keypadmatrix[5] |
+                    this.keypadmatrix[6] |
+                    this.keypadmatrix[7]
                     );
                 break;
             }
@@ -493,6 +497,7 @@ var Wqx = (function (){
     };
 
     Wqx.prototype.write0DVolumeIDLCDSegCtrl = function (value){
+        _trace('write0DVolumeIDLCDSegCtrl');
         if (value !== this.ram[io0D_volumeid]) {
             var bank = this.ram[io00_bank_switch];
             if ((value & 0x03) === 1) {
@@ -725,6 +730,7 @@ var Wqx = (function (){
     };
 
     Wqx.prototype.resetCpu = function (){
+        _trace('resetCpu');
         this.cpu = new M65C02Context();
         this.cpu.ram = this.ram;
         this.cpu.memmap = this.memmap;
@@ -732,6 +738,9 @@ var Wqx = (function (){
         this.cpu.io_write_map = this.io_write_map;
         this.cpu.io_read = this.io_read;
         this.cpu.io_write = this.io_write;
+        // RAM已就绪，在固件从复位向量启动前同步日期和时间
+        this.syncCalendar();
+        this.syncClock();
         this.cpu.cycles = 0;
         this.cpu.reg_a = 0;
         this.cpu.reg_x = 0;
@@ -752,6 +761,7 @@ var Wqx = (function (){
     };
 
     Wqx.prototype.loadBROM = function (buffer){
+        _trace('loadBROM');
         var byteOffset = 0;
         while (byteOffset < buffer.byteLength) {
             var bufferSrc1 = getByteArray(buffer, byteOffset, 0x4000);
@@ -762,10 +772,10 @@ var Wqx = (function (){
             memcpy(bufferDest2, bufferSrc2, 0x4000);
             byteOffset += 0x8000;
         }
-        this.resetCpu();
     };
 
     Wqx.prototype.loadNorFlash = function (buffer){
+        _trace('loadNorFlash');
         var byteOffset = 0;
         while (byteOffset < buffer.byteLength) {
             var bufferSrc1 = getByteArray(buffer, byteOffset, 0x4000);
@@ -776,9 +786,26 @@ var Wqx = (function (){
             memcpy(bufferDest2, bufferSrc2, 0x4000);
             byteOffset += 0x8000;
         }
-        this.resetCpu();
     };
+    function uint8ArrayToBase64(bytes) {
+        var binary = '';
+        var len = bytes.byteLength;
+        var chunk = 8192;
+        for (var i = 0; i < len; i += chunk) {
+            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+        }
+        return btoa(binary);
+    }
 
+    function base64ToUint8Array(base64) {
+        var binaryString = atob(base64);
+        var len = binaryString.length;
+        var bytes = new Uint8Array(len);
+        for (var i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        return bytes;
+    }
     Wqx.prototype.updateLCD = function (addr, value){
         var offset = addr - this.lcdbuffaddr;
         var oldValue = this.ram[addr];
@@ -824,6 +851,7 @@ var Wqx = (function (){
 
     // 修复：小时进位用 &= 0xC0 保留高2位标志，对应C++ clock_buff[2] &= 0xC0
     Wqx.prototype.adjustTime = function (){
+        _trace('adjustTime');
         if (++this.clockRecords[0] >= 60) {
             this.clockRecords[0] = 0;
             if (++this.clockRecords[1] >= 60) {
@@ -856,26 +884,202 @@ var Wqx = (function (){
         }
         return false;
     };
+Wqx.prototype.saveState = function (){
+    var state = {
+        ram: uint8ArrayToBase64(this.ram),
+        nor: uint8ArrayToBase64(this.nor),
+        ramRomBank1: uint8ArrayToBase64(this.ramRomBank1),
+        zp40cache: uint8ArrayToBase64(this.zp40cache),
+        cpu: {
+            reg_a: this.cpu.reg_a,
+            reg_x: this.cpu.reg_x,
+            reg_y: this.cpu.reg_y,
+            reg_pc: this.cpu.reg_pc,
+            reg_sp: this.cpu.reg_sp,
+            cycles: this.cpu.cycles,
+            flag_c: this.cpu.flag_c,
+            flag_z: this.cpu.flag_z,
+            flag_i: this.cpu.flag_i,
+            flag_d: this.cpu.flag_d,
+            flag_b: this.cpu.flag_b,
+            flag_u: this.cpu.flag_u,
+            flag_v: this.cpu.flag_v,
+            flag_n: this.cpu.flag_n
+        },
+        timer0started: this.timer0started,
+        timer0value: this.timer0value,
+        timer0startcycles: this.timer0startcycles,  // ← 新增
+        timer1started: this.timer1started,
+        timer1value: this.timer1value,
+        mayClockFlags: this.mayClockFlags,
+        // 新增：保存 LCD 刷新所需的关键寄存器
+        lcdbuffaddr: this.lcdbuffaddr,
+        frameCounter: this.frameCounter,
+        nmiCounter: this.nmiCounter,
+        clockCounter: this.clockCounter,
+        shouldIrq: this.shouldIrq
+    };
+    return state;  // 返回 state，不要在方法内写 localStorage，让调用者决定
+};
 
-    // 时间同步：保留 clockRecords[2] 高2位标志位
+Wqx.prototype.loadState = function (state){
+    try {
+        // 恢复 RAM
+        this.ram.set(base64ToUint8Array(state.ram));
+        this.nor.set(base64ToUint8Array(state.nor));
+        this.ramRomBank1.set(base64ToUint8Array(state.ramRomBank1));
+        this.zp40cache.set(base64ToUint8Array(state.zp40cache));
+
+        // 重建 NOR 视图（重要！）
+        for (var i = 0; i < 32; i++) {
+            this.norbankheader[i] = getByteArray(this.nor, 0x8000 * i, 0x8000);
+        }
+
+        // 重建 RAM 分段视图
+        this.ram2000_4000 = getByteArray(this.ram, 0x2000, 0x2000);
+        this.ram4000_6000 = getByteArray(this.ram, 0x4000, 0x2000);
+        this.memmap[map0000] = getByteArray(this.ram, 0, 0x2000);
+        this.memmap[map2000] = this.ram2000_4000;
+        this.memmap[map4000] = this.ram4000_6000;
+        this.memmap[map6000] = getByteArray(this.ram, 0x6000, 0x2000);
+        this.memmap[map8000] = getByteArray(this.ram, 0x8000, 0x2000);
+        this.memmap[mapA000] = getByteArray(this.ram, 0xA000, 0x2000);
+        this.memmap[mapC000] = getByteArray(this.ram, 0xC000, 0x2000);
+        this.memmap[mapE000] = getByteArray(this.ram, 0xE000, 0x2000);
+
+        // 恢复 CPU
+        this.cpu.reg_a = state.cpu.reg_a;
+        this.cpu.reg_x = state.cpu.reg_x;
+        this.cpu.reg_y = state.cpu.reg_y;
+        this.cpu.reg_pc = state.cpu.reg_pc;
+        this.cpu.reg_sp = state.cpu.reg_sp;
+        this.cpu.cycles = state.cpu.cycles;
+        this.cpu.flag_c = state.cpu.flag_c;
+        this.cpu.flag_z = state.cpu.flag_z;
+        this.cpu.flag_i = state.cpu.flag_i;
+        this.cpu.flag_d = state.cpu.flag_d;
+        this.cpu.flag_b = state.cpu.flag_b;
+        this.cpu.flag_u = state.cpu.flag_u;
+        this.cpu.flag_v = state.cpu.flag_v;
+        this.cpu.flag_n = state.cpu.flag_n;
+
+        this.timer0started = state.timer0started;
+        this.timer0value = state.timer0value;
+        this.timer0startcycles = state.timer0startcycles || 0;  // ← 兼容旧存档
+        this.timer1started = state.timer1started;
+        this.timer1value = state.timer1value;
+        this.mayClockFlags = state.mayClockFlags;
+
+        // 恢复计数器
+        if (state.frameCounter !== undefined) this.frameCounter = state.frameCounter;
+        if (state.nmiCounter !== undefined) this.nmiCounter = state.nmiCounter;
+        if (state.clockCounter !== undefined) this.clockCounter = state.clockCounter;
+        if (state.shouldIrq !== undefined) this.shouldIrq = state.shouldIrq;
+
+        // 重映射所有 bank（基于恢复后的寄存器值）
+        var volumeid = this.ram[io0D_volumeid];
+        var bank = this.ram[io00_bank_switch];
+        var roabbs = this.ram[io0A_roa];
+
+        // 重建 BIOS bank
+        if ((volumeid & 0x03) === 1) {
+            this.fillC000BIOSBank(this.volume1array);
+            this.memmap[mapE000] = getByteArray(this.volume1array[0], 0x2000, 0x2000);
+        } else if ((volumeid & 0x03) === 3) {
+            this.fillC000BIOSBank(this.volume2array);
+            this.memmap[mapE000] = getByteArray(this.volume2array[0], 0x2000, 0x2000);
+        } else {
+            this.fillC000BIOSBank(this.volume0array);
+            this.memmap[mapE000] = getByteArray(this.volume0array[0], 0x2000, 0x2000);
+        }
+
+        // 重映射 4000-BFFF
+        if (bank < 0x20) {
+            this.may4000ptr = this.norbankheader[bank];
+        } else if (bank >= 0x80) {
+            if (volumeid & 0x01) {
+                this.may4000ptr = this.volume1array[bank];
+            } else if (volumeid & 0x02) {
+                this.may4000ptr = this.volume2array[bank];
+            } else {
+                this.may4000ptr = this.volume0array[bank];
+            }
+        }
+        this.switch4000ToBFFF();
+
+        // 重映射 C000
+        this.memmap[mapC000] = getByteArray(this.bbsbankheader[roabbs & 0x0F], 0, 0x2000);
+
+        // 重映射 2000
+        var page2000 = (roabbs & 0x04) ? this.ram4000_6000 : this.ram2000_4000;
+        this.memmap[map2000] = page2000;
+
+        // 恢复 LCD 缓冲区地址
+        var lcdAddr = ((this.ram[io0C_lcd_config] & 0x03) << 12) | (this.ram[io06_lcd_config] << 4);
+        this.setLcdStartAddr(lcdAddr);
+
+        // 如果保存了 lcdbuffaddr，直接恢复
+        if (state.lcdbuffaddr !== null && state.lcdbuffaddr !== undefined) {
+            this.lcdbuffaddr = state.lcdbuffaddr;
+            for (var i = 0; i < 1600; i++) {
+                this.io_write_map[this.lcdbuffaddr + i] = true;
+            }
+        }
+
+        // 重绘屏幕
+        this.refreshLCD();
+
+        console.log('State restored');
+        return true;
+    } catch (e) {
+        console.error('Failed to load state:', e);
+        return false;
+    }
+};
+
+// 辅助方法：全屏重绘
+Wqx.prototype.refreshLCD = function (){
+    if (!this.lcdbuffaddr) return;
+    for (var i = 0; i < 1600; i++) {
+        var addr = this.lcdbuffaddr + i;
+        this.updateLCD(addr, this.ram[addr]);
+    }
+};
+
+
+    // 时间同步：仅同步 时、分、秒，保留 clockRecords[2] 高2位标志位
     Wqx.prototype.syncClock = function (){
+        _trace('syncClock');
         var now = new Date();
         this.clockRecords[0] = now.getSeconds();
         this.clockRecords[1] = now.getMinutes();
-        // 只写低6位小时值，保留高2位标志
         this.clockRecords[2] = (this.clockRecords[2] & 0xC0) | (now.getHours() & 0x3F);
-        this.clockRecords[3] = now.getDate();
-        this.clockRecords[4] = 0;
-        this.clockRecords[8] = now.getMonth() + 1;
-        this.clockRecords[9] = now.getFullYear() % 100;
-        this.clockRecords[14] = now.getDay();
+    };
+
+    // 日期同步：同步 年、月、日、星期
+    Wqx.prototype.syncCalendar = function (){
+        _trace('syncCalendar');
+        var now = new Date();
+
+        // 兼容某些固件使用的 RAM 备份
+        this.ram[0x472] = now.getFullYear() - 1881; // 年份偏移1881
+        this.ram[0x473] = now.getMonth();           // 月份0-based
+        this.ram[0x474] = now.getDate() - 1;        // 日
+    };
+
+    // 从存档恢复后调用：只启动帧定时器，不resetCpu，保留已恢复的CPU状态
+    Wqx.prototype.startFrame = function (){
+        _trace('startFrame');
+        if (!this.frameTimer) {
+            this.frameTimer = setInterval(this.frame.bind(this), 1000 / FrameRate);
+        }
     };
 
     Wqx.prototype.run = function (){
+        _trace('run');
         this._timerCounter = 0;
         this._instCount = 0;
-        // ROM初始化后同步一次真实时间；ROM可能会再覆盖，属正常现象
-        this.syncClock();
+        this.resetCpu();
         if (!this.frameTimer) {
             this.frameTimer = setInterval(this.frame.bind(this), 1000 / FrameRate);
         }
@@ -887,6 +1091,7 @@ var Wqx = (function (){
     };
 
     Wqx.prototype.reset = function (){
+        _trace('reset');
         this.resetCpu();
         this.frameCounter = 0;
         this.nmiCounter = 0;
@@ -951,6 +1156,7 @@ var Wqx = (function (){
             this.totalInsts++;
         }
 
+        document.title = String(this.frameCounter);
         this.frameCounter++;
     };
 

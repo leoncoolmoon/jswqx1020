@@ -454,7 +454,8 @@
                 <button class="theme-btn" id="theme-dark" onclick="changeTheme('dark')" title="Dark Mode">🌙</button>
             </div>
             <button id="fullscreen-btn" onclick="toggleFullscreen()">Toggle Fullscreen</button>
-            <button id="install-btn" style="display: none; background-color: var(--primary-color); margin-top: 8px;" onclick="installPWA()">Install Me</button>
+            <button id="install-btn" style="display: none; background-color: var(--primary-color); margin-top: 8px;" onclick="installPWA()">Install App</button>
+            <button id="clear-cache-btn" style="margin-top: 8px;" onclick="clearAppCache()">清除应用缓存</button>
         </div>
 
         <div class="drawer-section">
@@ -474,10 +475,10 @@
         </div>
 
         <p style="margin-top:auto; font-size: 11px; text-align: center; opacity: 0.5; color: var(--secondary-text);">
-            Fully opensource@<a href="https://github.com/leoncoolmoon/jswqx1020">github</a><br>
-            NC1020 Emulator v2.0 <br>
+            Fully opensource@<a href="https://github.com/leoncoolmoon/jswqx">github</a><br>
+            NC1020 Emulator v3.0 <br>
             Persistent Storage Enabled <br>
-            支持 PWA 离线使用 <br>
+            支持 PWA 离线使用 & 自动同步时间 <br>
             <a href="rom.zip">ROM文件下载地址</a> <br>
         </p>
     </div>
@@ -499,6 +500,7 @@
 
 
     <script>
+
         // ============================================================
         // UI Drawer & Theme Logic
         // ============================================================
@@ -542,53 +544,49 @@
         })();
 
         // ============================================================
-        // NOR Flash localStorage Persistence
+        // Machine State localStorage Persistence
         // ============================================================
-        var FLASH_STORAGE_KEY = 'wqx_nor_flash';
+        var STATE_STORAGE_KEY = 'wqx_state';
 
-        function saveFlashToStorage(wqxInstance) {
+        function saveAppState(wqxInstance) {
             try {
-                var bytes = wqxInstance.nor;
-                var CHUNK = 16384;
-                var parts = [];
-                for (var i = 0; i < bytes.length; i += CHUNK) {
-                    var chunk = bytes.subarray(i, i + CHUNK);
-                    var binary = '';
-                    for (var j = 0; j < chunk.length; j++) {
-                        binary += String.fromCharCode(chunk[j]);
-                    }
-                    parts.push(btoa(binary));
-                }
-                localStorage.setItem(FLASH_STORAGE_KEY, JSON.stringify(parts));
+                var state = wqxInstance.saveState();
+                localStorage.setItem(STATE_STORAGE_KEY, JSON.stringify(state));
                 setFlashStatus('💾 Auto-saved');
                 return true;
             } catch (e) {
-                setFlashStatus('⚠️ Storage full');
+                setFlashStatus('⚠️ Save failed');
                 return false;
             }
         }
 
-        function loadFlashFromStorage(wqxInstance) {
+        function loadAppState(wqxInstance) {
             try {
-                var stored = localStorage.getItem(FLASH_STORAGE_KEY);
-                if (!stored) return false;
-                var parts = JSON.parse(stored);
-                var offset = 0;
-                for (var i = 0; i < parts.length; i++) {
-                    var binary = atob(parts[i]);
-                    for (var j = 0; j < binary.length; j++) {
-                        wqxInstance.nor[offset++] = binary.charCodeAt(j);
-                    }
+                var stored = localStorage.getItem(STATE_STORAGE_KEY);
+                if (stored) {
+                    var state = JSON.parse(stored);
+                    wqxInstance.loadState(state);
+                    setFlashStatus('✅ Restored');
+                    return true;
                 }
-                setFlashStatus('✅ Restored');
-                return true;
+
+                // Migration from v2.0
+                var oldFlash = localStorage.getItem('wqx_nor_flash');
+                if (oldFlash) {
+                    log('Migrating NOR flash from v2.0...');
+                    var bytes = base64ToUint8Array(oldFlash);
+                    wqxInstance.loadNorFlash(bytes.buffer);
+                    setFlashStatus('✅ Migrated from v2.0');
+                    return 'migrated';
+                }
+                return false;
             } catch (e) {
                 return false;
             }
         }
 
-        function clearSavedFlash() {
-            localStorage.removeItem(FLASH_STORAGE_KEY);
+        function clearSavedState() {
+            localStorage.removeItem(STATE_STORAGE_KEY);
             setFlashStatus('🗑️ Cleared');
             setTimeout(() => location.reload(), 500);
         }
@@ -601,7 +599,7 @@
             function startHold() {
                 btn.classList.add('pressing');
                 holdTimer = setTimeout(function () {
-                    clearSavedFlash();
+                    clearSavedState();
                 }, HOLD_MS);
             }
 
@@ -649,21 +647,9 @@
             if (el) el.textContent = msg;
         }
 
-        function injectFlashAutoSave(wqxInstance) {
-            var _origLoadNorFlash = wqxInstance.loadNorFlash.bind(wqxInstance);
-            wqxInstance.loadNorFlash = function(buffer) {
-                _origLoadNorFlash(buffer);
-                saveFlashToStorage(wqxInstance);
-            };
-
-            var saveTimer = null;
-            var _origWriteGE4000 = wqxInstance.writeGE4000.bind(wqxInstance);
-            wqxInstance.writeGE4000 = function(addr, value) {
-                _origWriteGE4000(addr, value);
-                if (saveTimer) clearTimeout(saveTimer);
-                saveTimer = setTimeout(function() {
-                    saveFlashToStorage(wqxInstance);
-                }, 3000);
+        function injectAutoSave(wqxInstance) {
+            wqxInstance.onSaveState = function() {
+                saveAppState(wqxInstance);
             };
         }
 
@@ -948,14 +934,49 @@ function hasPhysicalKeyboard() {
             _origUpdateLCD(addr, value);
         };
 
-        injectFlashAutoSave(wqx);
+        injectAutoSave(wqx);
 
         var romLoaded = false;
         var norLoaded = false;
+        var _stateRestored = false;
 
-        function check() {
-            if (romLoaded && norLoaded) run();
+// Firmware drag-and-drop update support
+document.addEventListener('dragover', function(e){ e.preventDefault(); });
+document.addEventListener('drop', function(e){
+    e.preventDefault();
+    var file = e.dataTransfer.files[0];
+    if (!file || !file.name.endsWith('.fls')) return;
+    var reader = new FileReader();
+    reader.onload = function(ev){
+        wqx.loadNorFlash(ev.target.result);
+        if (wqx) saveAppState(wqx);
+        setFlashStatus('💾 已更新固件: ' + file.name);
+    };
+    reader.readAsArrayBuffer(file);
+});
+
+
+
+function check() {
+    if (romLoaded && norLoaded) {
+        if (_stateRestored) {
+            // 从存档恢复：不reset，先同步日期
+            wqx.syncCalendar();
+            wqx.startFrame(); // 只启动定时器，不resetCpu
+            // 延时同步时钟，避免干扰启动逻辑
+            setTimeout(() => {
+                wqx.syncClock();
+                log('Delayed clock sync completed');
+            }, 2000);
+        } else {
+            wqx.run(); // 全新启动，resetCpu+syncCalendar+syncClock
+                    // 确保即便全新启动也同步日历
+                    wqx.syncCalendar();
         }
+        document.getElementById('run').disabled = true;
+        document.getElementById('stop').disabled = false;
+    }
+}
 
         function loadZip() {
             log('Loading rom.zip...');
@@ -997,11 +1018,21 @@ function hasPhysicalKeyboard() {
                         log('obj_lu.bin loaded');
                         wqx.loadBROM(data);
                         romLoaded = true;
-                        if (loadFlashFromStorage(wqx)) {
+
+                        // 先判断是否有存档
+                        var restoreStatus = loadAppState(wqx);
+                        if (restoreStatus === true) {
+                            log('State restored from storage');
                             norLoaded = true;
+                            _stateRestored = true;
+                            check();
+                        } else if (restoreStatus === 'migrated') {
+                            log('NOR Flash migrated, booting...');
+                            norLoaded = true;
+                            _stateRestored = false;
                             check();
                         } else {
-                            log('No saved flash, reading nc1020.fls...');
+                            log('No saved state, reading nc1020.fls...');
                             fs.readFile('/nc1020.fls', function (err, data) {
                                 if (err) {
                                     setFlashStatus('❌ Missing nc1020.fls');
@@ -1010,6 +1041,7 @@ function hasPhysicalKeyboard() {
                                 log('nc1020.fls loaded');
                                 wqx.loadNorFlash(data);
                                 norLoaded = true;
+                                _stateRestored = false;
                                 check();
                             });
                         }
@@ -1042,11 +1074,58 @@ function hasPhysicalKeyboard() {
                 log('Fatal initialization error: ' + e, '#f00');
             }
 
+            // 移除页面底部的冗余 loadAppState 调用，统一在 mountBFS 中处理
+            // if (loadAppState(wqx)) {
+            //     norLoaded = true;
+            //     _stateRestored = true;
+            //     check();
+            // }
+
+            // Auto-save state when page is hidden or closed
+            window.addEventListener('pagehide', () => {
+                if (wqx) saveAppState(wqx);
+            });
+
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') {
+                    if (wqx) saveAppState(wqx);
+                } else if (document.visibilityState === 'visible') {
+                    if (wqx) {
+                        wqx.syncCalendar();
+                        wqx.syncClock();
+                        log('🔄 Time synchronized');
+                    }
+                }
+            });
+
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('./sw.js').then(function(registration) {
                     log('ServiceWorker registration successful with scope: ' + registration.scope);
+
+                    registration.onupdatefound = function() {
+                        var installingWorker = registration.installing;
+                        installingWorker.onstatechange = function() {
+                            if (installingWorker.state === 'installed') {
+                                if (navigator.serviceWorker.controller) {
+                                    log('New content is available; please refresh.');
+                                    if (confirm('新版本已就绪，是否立即刷新以同步服务器版本？')) {
+                                        window.location.reload();
+                                    }
+                                } else {
+                                    log('Content is cached for offline use.');
+                                }
+                            }
+                        };
+                    };
                 }, function(err) {
                     log('ServiceWorker registration failed: ' + err, '#f00');
+                });
+
+                var refreshing;
+                navigator.serviceWorker.addEventListener('controllerchange', function() {
+                    if (refreshing) return;
+                    window.location.reload();
+                    refreshing = true;
                 });
             }
         });
@@ -1078,6 +1157,32 @@ function hasPhysicalKeyboard() {
             deferredPrompt = null;
             // Hide the install button
             if (installBtn) installBtn.style.display = 'none';
+        }
+
+        async function clearAppCache() {
+            if (confirm('确定要清除应用缓存并重新加载吗？这可能有助于解决某些显示或运行问题。')) {
+                try {
+                    // Unregister service workers
+                    if ('serviceWorker' in navigator) {
+                        const registrations = await navigator.serviceWorker.getRegistrations();
+                        for (const registration of registrations) {
+                            await registration.unregister();
+                        }
+                    }
+                    // Delete caches
+                    if ('caches' in window) {
+                        const cacheNames = await caches.keys();
+                        for (const cacheName of cacheNames) {
+                            await caches.delete(cacheName);
+                        }
+                    }
+                    // Reload
+                    window.location.reload(true);
+                } catch (err) {
+                    console.error('Clear cache failed:', err);
+                    alert('清除缓存失败: ' + err.message);
+                }
+            }
         }
 
         window.addEventListener('appinstalled', (event) => {

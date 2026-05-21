@@ -49,7 +49,7 @@ var WqxKeyInput = function (){
         38: 'Up',
         34: 'PageDown',
         9: 'Tab',
-        16: 'Shift',
+	16: 'Shift',
         229: 'Shift',
         20: 'CapsLock',
         27: 'Esc',
@@ -133,15 +133,13 @@ var WqxKeyInput = function (){
         'F3': 0x12, // 14 F3
         'F4': 0x13 // 15 F4
     };
-    WqxKeyInput.prototype._keyDownOrUp = function (key, downOrUp){
-        var wqxKeyCode = keyNameToKeypadMatrixIndex[key];
-        if (wqxKeyCode) {
-            var col = wqxKeyCode >> 3;
-            var row = wqxKeyCode & 0x07;
-            //this.wqx.keypadmatrix[row][col] = downOrUp ? 1 : 0;
-			this.wqx.setKey(wqxKeyCode, downOrUp);
-        }
-    };
+WqxKeyInput.prototype._keyDownOrUp = function (key, downOrUp){
+    var wqxKeyCode = keyNameToKeypadMatrixIndex[key];
+    if (wqxKeyCode !== undefined) {
+        // 改为调用setKey，走统一的位运算+唤醒逻辑
+        this.wqx.setKey(wqxKeyCode, downOrUp);
+    }
+};
     WqxKeyInput.prototype.keyDown = function (key){
         this._keyDownOrUp(key, true);
         this.onpress(key);
