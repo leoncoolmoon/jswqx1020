@@ -1,6 +1,6 @@
 # js版文曲星nc1020模拟器 v3.0
 
-## 网页版文曲星nc1020[模拟器](https://leoncoolmoon.github.io/jswqx/) <br>
+## 网页版文曲星nc1020[模拟器](https://leoncoolmoon.github.io/jswqx1020/) <br>
 
 基于 JavaScript 的文曲星 NC1020 模拟器，从原基础上修改增加了现代化的图形界面。
 
