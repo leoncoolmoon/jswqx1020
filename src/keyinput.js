@@ -100,6 +100,7 @@ var WqxKeyInput = function (){
         'N': 0x35, // 46 N
         'M': 0x36, // 46 M
         'PageUp': 0x37, // 47 PgUp
+        'PgUp': 0x37,
 
         'A': 0x28, // 30 A
         'S': 0x29, // 31 S
@@ -126,6 +127,7 @@ var WqxKeyInput = function (){
         'P': 0x1C, // 29 P
         'Enter': 0x1D, // 39 Enter
         'PageDown': 0x1E, // 49 PgDown
+        'PgDn': 0x1E,
         'Right': 0x1F, // 59 `->`
 
         'F1': 0x10, // 12 F1
